@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wumpus World AI</title>
+    <style>
+        canvas { border: 1px solid black; margin-top: 10px; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .controls { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Wumpus World Inference Agent</h1>
+    
+    <div>
+        <label>Grid Size: <input type="number" id="gridSize" value="5" min="3" max="10"></label>
+        <button onclick="apiCreateGrid()">Start New Simulation</button>
+    </div>
+
+    <canvas id="gridCanvas" width="500" height="500"></canvas>
+    
+    <div class="controls">
+        <button onclick="apiMove('up')">Up</button>
+        <button onclick="apiMove('left')">Left</button>
+        <button onclick="apiMove('right')">Right</button>
+        <button onclick="apiMove('down')">Down</button>
+    </div>
+
+    <div id="metrics">
+        <strong>Inference Steps:</strong> <span id="steps">0</span><br>
+        <strong>Current Percepts:</strong> <span id="percepts">None</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        let gridSize = 5;
+        let cellSize = 100;
+        let agentPos = {row: 0, col: 0};
+        let safeCells = [];
+        let visitedCells = [];
+
+        async function apiCreateGrid() {
+            gridSize = parseInt(document.getElementById('gridSize').value);
+            cellSize = canvas.width / gridSize;
+            
+            await fetch('/create_grid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rows: gridSize, cols: gridSize })
+            });
+
+            // Reset local states for fresh game
+            agentPos = {row: 0, col: 0};
+            safeCells = [];
+            visitedCells = [{row: 0, col: 0}];
+            document.getElementById('steps').textContent = "0";
+            document.getElementById('percepts').textContent = "None";
+            
+            drawGrid();
+        }
+
+        async function apiMove(action) {
+            const res = await fetch('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                agentPos = data.agent_pos;
+                safeCells = data.safe_cells;
+                visitedCells = data.visited_cells;
+                
+                document.getElementById('steps').textContent = data.inference_steps;
+                document.getElementById('percepts').textContent = data.current_percepts;
+                drawGrid();
+            } else {
+                alert("Invalid move!");
+            }
+        }
+
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const x = c * cellSize;
+                    const y = r * cellSize;
+                    
+                    // Default unknown
+                    ctx.fillStyle = '#DDDDDD';
+                    
+                    if (visitedCells.some(cell => cell.row === r && cell.col === c)) {
+                        ctx.fillStyle = '#FFFFFF'; // Visited 
+                    } else if (safeCells.some(cell => cell.row === r && cell.col === c)) {
+                        ctx.fillStyle = '#C8E6C9'; // Safe inferred
+                    }
+
+                    ctx.fillRect(x, y, cellSize, cellSize);
+                    ctx.strokeRect(x, y, cellSize, cellSize);
+
+                    // Draw Agent
+                    if (agentPos.row === r && agentPos.col === c) {
+                        ctx.fillStyle = 'blue';
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // Initialize on page load
+        apiCreateGrid();
+    </script>
+</body>
+</html>
