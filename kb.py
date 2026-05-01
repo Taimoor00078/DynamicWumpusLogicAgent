@@ -1,5 +1,5 @@
-# Authors: Muhammad Haris Zubair (F24-0608), Muhammad Abdullah (F24-0613)
-# Section: BCS - 4F
+# Authors: Taimoor Ahmad(23F-0551)
+# Section: BCS - 6E
 # Wumpus World Knowledge Base with Propositional Logic
 
 from typing import Set, Tuple, List, Dict
